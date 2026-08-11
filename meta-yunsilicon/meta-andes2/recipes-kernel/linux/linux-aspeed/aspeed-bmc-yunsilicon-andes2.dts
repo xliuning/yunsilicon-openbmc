@@ -286,16 +286,27 @@
 };
 
 &ehci1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &uhci {
-	status = "okay";
+	status = "disabled";
 };
 
 &sdc {
-	status = "okay";
+	status = "disabled";
 };
+
+&kcs3 {
+        aspeed,lpc-io-reg = <0xca2>;
+        status = "okay";
+};
+
+&lpc_snoop {
+        snoop-ports = <0x80>;
+        status = "okay";
+};
+
 
 /*
  * The signal voltage of sdhci0 and sdhci1 on AST2600-A2 EVB is able to be

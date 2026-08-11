@@ -55,7 +55,7 @@
       "is_ipmi" : true
     }
   },
-  "15" : {
+  "3" : {
     "name" : "ipmi_kcs3",
     "is_valid" : true,
     "active_sessions" : 0,
