@@ -1,0 +1,24 @@
+From 175742ceb7d493601c0c590215287e203483cf88 Mon Sep 17 00:00:00 2001
+From: xliuning <IDLN@163.com>
+Date: Fri, 7 Aug 2026 10:34:32 +0800
+Subject: [PATCH] arm: dts: add Andes2 board
+
+Upstream-Status: Inappropriate [board-specific]
+---
+ arch/arm/boot/dts/aspeed/Makefile | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/aspeed/Makefile b/arch/arm/boot/dts/aspeed/Makefile
+index 767f7c765..ae54b4951 100644
+--- a/arch/arm/boot/dts/aspeed/Makefile
++++ b/arch/arm/boot/dts/aspeed/Makefile
+@@ -84,4 +84,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	aspeed-bmc-ufispace-ncplite.dtb \
+ 	aspeed-bmc-vegman-n110.dtb \
+ 	aspeed-bmc-vegman-rx20.dtb \
+-	aspeed-bmc-vegman-sx20.dtb
++	aspeed-bmc-vegman-sx20.dtb \
++	aspeed-bmc-yunsilicon-andes2.dts
+-- 
+2.34.1
+
