@@ -4,4 +4,5 @@ OBMC_IMAGE_EXTRA_INSTALL:append:andes2 = " \
     switch-util \
     curl \
     ipmitool \
+    net-tools \
 "

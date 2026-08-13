@@ -2505,9 +2505,9 @@
             "Type": "pmbus"
         }
     ],
-    "Name": "G220A",
+    "Name": "Andes2",
     "Probe": [
-        "xyz.openbmc_project.FruDevice({'PRODUCT_PRODUCT_NAME': 'G220*'})"
+        "xyz.openbmc_project.FruDevice({'PRODUCT_PRODUCT_NAME': 'PCIE test card'})"
     ],
     "Type": "Board",
     "xyz.openbmc_project.Inventory.Decorator.Asset": {

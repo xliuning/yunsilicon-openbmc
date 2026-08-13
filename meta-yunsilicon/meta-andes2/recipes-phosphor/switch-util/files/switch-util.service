@@ -1,0 +1,17 @@
+[Unit]
+Description=Pre-Network L2 switch Initialization
+DefaultDependencies=no
+After=sysinit.target local-fs.target
+Before=network-pre.target phosphor-network-manager.service
+Wants=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/switch-util
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=30
+
+[Install]
+WantedBy=network-pre.target
