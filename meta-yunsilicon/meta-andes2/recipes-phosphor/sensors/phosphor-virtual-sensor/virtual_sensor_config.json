@@ -10,7 +10,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":
@@ -48,7 +48,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":
@@ -86,7 +86,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":
@@ -124,7 +124,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":
@@ -170,7 +170,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":
@@ -221,7 +221,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":
@@ -264,7 +264,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":
@@ -307,7 +307,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":
@@ -358,7 +358,7 @@
             [
                 "chassis",
                 "all_sensors",
-                "/xyz/openbmc_project/inventory/system/board/G220A"
+                "/xyz/openbmc_project/inventory/system/board/SOC_Board"
             ]
         ],
         "Params":

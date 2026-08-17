@@ -2507,17 +2507,28 @@
     ],
     "Name": "Andes2",
     "Probe": [
-        "xyz.openbmc_project.FruDevice({'PRODUCT_PRODUCT_NAME': 'PCIE test card'})"
+        "xyz.openbmc_project.FruDevice({'BOARD_PRODUCT_NAME': 'SOC Board'})"
     ],
     "Type": "Board",
     "xyz.openbmc_project.Inventory.Decorator.Asset": {
-        "Manufacturer": "$PRODUCT_MANUFACTURER",
-        "Model": "$PRODUCT_PRODUCT_NAME",
-        "PartNumber": "$PRODUCT_PART_NUMBER",
-        "SerialNumber": "$PRODUCT_SERIAL_NUMBER"
+        "Manufacturer": "$BOARD_MANUFACTURER",
+        "Model": "$BOARD_PRODUCT_NAME",
+        "PartNumber": "$BOARD_PART_NUMBER",
+        "SerialNumber": "$BOARD_SERIAL_NUMBER"
     },
     "xyz.openbmc_project.Inventory.Decorator.AssetTag": {
         "AssetTag": "$PRODUCT_ASSET_TAG"
     },
-    "xyz.openbmc_project.Inventory.Item.System": {}
+    "xyz.openbmc_project.Inventory.Item": {},
+    "xyz.openbmc_project.Inventory.Item.Board": {},
+    "xyz.openbmc_project.Inventory.Item.System": {},
+    "Exposes": [
+        {
+            "Address": "$ADDRESS",
+            "Bus": "$BUS",
+            "FruId": 0,
+            "Name": "Andes2 Baseboard",
+            "Type": "FruDevice"
+        }
+    ]
 }
