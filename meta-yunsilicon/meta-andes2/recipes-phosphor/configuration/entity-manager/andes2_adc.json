@@ -1,0 +1,103 @@
+{
+    "Name": "Andes2 ADC",
+    "Probe": "xyz.openbmc_project.FruDevice({'BOARD_PRODUCT_NAME': 'SOC Board'})",
+    "Type": "Board",
+    "Exposes": [
+        {
+            "Index": 1,
+            "Name": "BMC_ADC_P1V2_BMC_DDR4",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 2,
+            "Name": "BMC_ADC_P1V0_PVCCANA_CPU",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 3,
+            "Name": "BMC_ADC_P3V3_AUX",
+            "ScaleFactor": 2.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 4,
+            "Name": "BMC_ADC_P1V2_PVDDQ_ABC_CPU",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 5,
+            "Name": "BMC_ADC_P1V8_PVCCIN_CPU",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 6,
+            "Name": "BMC_ADC_P1V8_AUX",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 7,
+            "Name": "BMC_ADC_P0V6_PVTT_CPU_ABC",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 8,
+            "Name": "BMC_ADC_P12V_L1",
+            "ScaleFactor": 11.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 9,
+            "Name": "BMC_ADC_P0V8_PVNN_PCH",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 10,
+            "Name": "BMC_ADC_P1V8_BMC",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 11,
+            "Name": "BMC_ADC_P5V0",
+            "ScaleFactor": 5.7,
+            "Type": "ADC"
+        },
+        {
+            "Index": 12,
+            "Name": "BMC_ADC_P1V0_BMC",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 13,
+            "Name": "BMC_ADC_P2V5_BMC",
+            "ScaleFactor": 2.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 14,
+            "Name": "BMC_ADC_P1V05",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 15,
+            "Name": "BMC_ADC_P2V5_PVPP_CPU_ABC",
+            "ScaleFactor": 2.0,
+            "Type": "ADC"
+        },
+        {
+            "Index": 16,
+            "Name": "BMC_ADC_P12V_L2",
+            "ScaleFactor": 1.0,
+            "Type": "ADC"
+        }
+    ]
+}

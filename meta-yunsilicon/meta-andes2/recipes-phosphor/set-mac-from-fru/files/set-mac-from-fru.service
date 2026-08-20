@@ -1,0 +1,15 @@
+[Unit]
+Description=Set Eth0 MAC Address from FRU
+After=dbus.service xyz.openbmc_project.FruDevice.service
+Wants=dbus.service xyz.openbmc_project.FruDevice.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/set-mac-from-fru.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target
