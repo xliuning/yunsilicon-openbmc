@@ -147,15 +147,67 @@
 };
 
 &fmc {
-	status = "okay";
-	flash@0 {
-		status = "okay";
-		m25p,fast-read;
-		label = "bmc";
-		spi-rx-bus-width = <4>;
-		spi-max-frequency = <50000000>;
-#include "openbmc-flash-layout-64.dtsi"
-	};
+        status = "okay";
+
+        flash@0 {
+        status = "okay";
+        /* 1. For driver compatiable  */
+        compatible = "jedec,spi-nor";
+        
+        /* 2. Lower speed to 25M HZ */
+        spi-max-frequency = <25000000>;
+        
+        /* 3. Restrict to 1 bus width */
+        spi-tx-bus-width = <1>;
+        spi-rx-bus-width = <1>;
+
+        /* 4. Move flash partition to here and add sel partition */
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+	    
+            partition@0_all {
+                label = "bmc";
+                reg = <0x0 0x4000000>; /* over write 64MB SPI Flash for initramfs upgrade */
+            };
+            /* 1. U-Boot sector */
+            partition@0 {
+                label = "u-boot";
+                reg = <0x0 0xe0000>; // 896KB
+            };
+
+            /* 2. U-Boot Env sector */
+            partition@e0000 {
+                label = "u-boot-env";
+                reg = <0xe0000 0x20000>; // 128KB
+            };
+
+            /* 3. Kernel readonly sector */
+            partition@100000 {
+                label = "kernel";
+                reg = <0x100000 0x900000>; // 9MB
+            };
+
+            /* 4. ROFS (SquashFS readonly) */
+            partition@a00000 {
+                label = "rofs";
+                reg = <0xa00000 0x1e00000>; // 30MB
+            };
+
+            /* 5. RWFS Overlay writeable sector */
+            partition@2800000 {
+                label = "rwfs";
+                reg = <0x2800000 0x1000000>; // 16MB
+            };
+
+            /* 6. SEL / LOG isolated sector */
+            partition@3800000 {
+                label = "sel";
+                reg = <0x3800000 0x800000>; // 8MB
+            };
+        };
+    };
 };
 
 &spi1 {
@@ -169,6 +221,21 @@
 		label = "pnor";
 		spi-rx-bus-width = <4>;
 		spi-max-frequency = <100000000>;
+	};
+};
+&adc0 {
+        status = "okay";
+};
+&adc1 {
+	status = "okay";
+};
+/ {
+	iio-hwmon {
+    		compatible = "iio-hwmon";
+    		io-channels = <&adc0 0>, <&adc0 1>, <&adc0 2>, <&adc0 3>,
+				<&adc0 4>, <&adc0 5>, <&adc0 6>, <&adc0 7>,
+				<&adc1 0>, <&adc1 1>, <&adc1 2>, <&adc1 3>,
+				<&adc1 4>, <&adc1 5>, <&adc1 6>, <&adc1 7>;
 	};
 };
 
