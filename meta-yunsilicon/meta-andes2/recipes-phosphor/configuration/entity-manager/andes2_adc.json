@@ -4,99 +4,99 @@
     "Type": "Board",
     "Exposes": [
         {
-            "Index": 1,
+            "Index": 0,
             "Name": "BMC_ADC_P1V2_BMC_DDR4",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 2,
+            "Index": 1,
             "Name": "BMC_ADC_P1V0_PVCCANA_CPU",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 3,
+            "Index": 2,
             "Name": "BMC_ADC_P3V3_AUX",
-            "ScaleFactor": 2.0,
+            "ScaleFactor": 0.5,
             "Type": "ADC"
         },
         {
-            "Index": 4,
+            "Index": 3,
             "Name": "BMC_ADC_P1V2_PVDDQ_ABC_CPU",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 5,
+            "Index": 4,
             "Name": "BMC_ADC_P1V8_PVCCIN_CPU",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 6,
+            "Index": 5,
             "Name": "BMC_ADC_P1V8_AUX",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 7,
+            "Index": 6,
             "Name": "BMC_ADC_P0V6_PVTT_CPU_ABC",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 8,
+            "Index": 7,
             "Name": "BMC_ADC_P12V_L1",
-            "ScaleFactor": 11.0,
+            "ScaleFactor": 0.0909,
             "Type": "ADC"
         },
         {
-            "Index": 9,
+            "Index": 8,
             "Name": "BMC_ADC_P0V8_PVNN_PCH",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 10,
+            "Index": 9,
             "Name": "BMC_ADC_P1V8_BMC",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 11,
+            "Index": 10,
             "Name": "BMC_ADC_P5V0",
-            "ScaleFactor": 5.7,
+            "ScaleFactor": 0.1754,
             "Type": "ADC"
         },
         {
-            "Index": 12,
+            "Index": 11,
             "Name": "BMC_ADC_P1V0_BMC",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 13,
+            "Index": 12,
             "Name": "BMC_ADC_P2V5_BMC",
-            "ScaleFactor": 2.0,
+            "ScaleFactor": 0.5,
             "Type": "ADC"
         },
         {
-            "Index": 14,
+            "Index": 13,
             "Name": "BMC_ADC_P1V05",
             "ScaleFactor": 1.0,
             "Type": "ADC"
         },
         {
-            "Index": 15,
+            "Index": 14,
             "Name": "BMC_ADC_P2V5_PVPP_CPU_ABC",
-            "ScaleFactor": 2.0,
+            "ScaleFactor": 0.5,
             "Type": "ADC"
         },
         {
-            "Index": 16,
+            "Index": 15,
             "Name": "BMC_ADC_P12V_L2",
-            "ScaleFactor": 1.0,
+            "ScaleFactor": 0.0909,
             "Type": "ADC"
         }
     ]

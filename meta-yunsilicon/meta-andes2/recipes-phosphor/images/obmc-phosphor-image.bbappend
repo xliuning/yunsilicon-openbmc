@@ -9,4 +9,5 @@ OBMC_IMAGE_EXTRA_INSTALL:append:andes2 = " \
 IMAGE_INSTALL:append = " \
     phosphor-state-manager-host \
     phosphor-state-manager-chassis \
+    phosphor-hwmon \
 "
