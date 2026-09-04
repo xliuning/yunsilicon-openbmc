@@ -1,0 +1,469 @@
+From 0c3c4d839b76304b965171e7c907a7388b81c5b7 Mon Sep 17 00:00:00 2001
+From: xliuning <IDLN@163.com>
+Date: Wed, 12 Aug 2026 15:30:41 +0800
+Subject: [PATCH] - Power on: 0x41=0 -> 100ms -> 0x43=0 -> 100ms -> 0x43=1 -
+ Power off: 0x41=0 -> 100ms -> 0x43=0 -> 100ms -> 0x41=1 -> wait 6s - Hard
+ reset: write 0x14=1 - Power cycle: power off + 10s delay + power on - All
+ CPLD operations serialized with mutex
+
+Signed-off-by: liun <liun@yunsilicon.com>"
+Signed-off-by: xliuning <IDLN@163.com>
+
+Upstream-Status: Inappropriate [board-specific]
+---
+ chassishandler.cpp | 377 +++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 311 insertions(+), 66 deletions(-)
+
+diff --git a/chassishandler.cpp b/chassishandler.cpp
+index 0508b57..be758da 100644
+--- a/chassishandler.cpp
++++ b/chassishandler.cpp
+@@ -47,6 +47,14 @@
+ #include <sstream>
+ #include <string>
+ 
++#include <linux/i2c-dev.h>
++#include <sys/ioctl.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <cerrno>
++#include <thread>
++#include <mutex>
++
+ std::unique_ptr<sdbusplus::Timer> identifyTimer
+     __attribute__((init_priority(101)));
+ 
+@@ -178,9 +186,249 @@ namespace poh
+ {
+ 
+ constexpr auto minutesPerCount = 60;
+-
+ } // namespace poh
+ 
++namespace cpld_i2c
++{
++constexpr int BUS_NUM = 7;
++constexpr uint8_t SLAVE_ADDR = 0x0d; // 7-bit I2C address
++
++// ---------- Register definitions ----------
++constexpr uint8_t REG_POWER_STATUS = 0x17; // Power state: 0x00=OFF, 0x03=ON
++constexpr uint8_t REG_HARD_RESET   = 0x14; // Hard reset trigger
++constexpr uint8_t REG_CTRL_1       = 0x41; // Power control register 1
++constexpr uint8_t REG_CTRL_2       = 0x43; // Power control register 2
++
++// ---------- Timing ----------
++constexpr auto WRITE_DELAY      = std::chrono::milliseconds(100);
++constexpr auto POWER_OFF_WAIT   = std::chrono::seconds(6);
++constexpr auto POWER_CYCLE_WAIT = std::chrono::seconds(4); // Since Power off have 6 seconds delay, only 4 seconds extra delay need
++
++// ---------- Mutex for serializing CPLD access ----------
++static std::mutex cpldMutex;
++
++// ===================== Low-level I2C read/write =====================
++
++static int readReg(uint8_t reg, uint8_t* val)
++{
++    char path[32];
++    snprintf(path, sizeof(path), "/dev/i2c-%d", BUS_NUM);
++    int fd = open(path, O_RDWR);
++    if (fd < 0)
++    {
++        lg2::error("CPLD I2C open {PATH} failed: {ERR}",
++                   "PATH", path, "ERR", strerror(errno));
++        return -errno;
++    }
++    if (ioctl(fd, I2C_SLAVE, SLAVE_ADDR) < 0)
++    {
++        lg2::error("CPLD I2C set addr 0x{ADDR} failed: {ERR}",
++                   "ADDR", lg2::hex, SLAVE_ADDR, "ERR", strerror(errno));
++        close(fd);
++        return -errno;
++    }
++    if (write(fd, &reg, 1) != 1)
++    {
++        lg2::error("CPLD I2C write reg addr 0x{REG} failed: {ERR}",
++                   "REG", lg2::hex, reg, "ERR", strerror(errno));
++        close(fd);
++        return -errno;
++    }
++    if (read(fd, val, 1) != 1)
++    {
++        lg2::error("CPLD I2C read reg 0x{REG} failed: {ERR}",
++                   "REG", lg2::hex, reg, "ERR", strerror(errno));
++        close(fd);
++        return -errno;
++    }
++    close(fd);
++    return 0;
++}
++
++static int writeReg(uint8_t reg, uint8_t val)
++{
++    char path[32];
++    snprintf(path, sizeof(path), "/dev/i2c-%d", BUS_NUM);
++    int fd = open(path, O_RDWR);
++    if (fd < 0)
++    {
++        lg2::error("CPLD I2C open {PATH} failed: {ERR}",
++                   "PATH", path, "ERR", strerror(errno));
++        return -errno;
++    }
++    if (ioctl(fd, I2C_SLAVE, SLAVE_ADDR) < 0)
++    {
++        lg2::error("CPLD I2C set addr 0x{ADDR} failed: {ERR}",
++                   "ADDR", lg2::hex, SLAVE_ADDR, "ERR", strerror(errno));
++        close(fd);
++        return -errno;
++    }
++    uint8_t buf[2] = {reg, val};
++    if (write(fd, buf, 2) != 2)
++    {
++        lg2::error("CPLD I2C write reg 0x{REG} val 0x{VAL} failed: {ERR}",
++                   "REG", lg2::hex, reg, "VAL", lg2::hex, val,
++                   "ERR", strerror(errno));
++        close(fd);
++        return -errno;
++    }
++    close(fd);
++    return 0;
++}
++
++
++/**
++ * Power On sequence:
++ *   0x41 <- 0  →  delay 100ms
++ *   0x43 <- 0  →  delay 100ms
++ *   0x43 <- 1
++ */
++static int doPowerOnLocked()
++{
++    int rc;
++    lg2::info("CPLD PowerOn: start");
++
++    rc = writeReg(REG_CTRL_1, 0x00);
++    if (rc < 0)
++    {
++        lg2::error("PowerOn: write 0x41=0 failed");
++        return rc;
++    }
++    std::this_thread::sleep_for(WRITE_DELAY);
++
++    rc = writeReg(REG_CTRL_2, 0x00);
++    if (rc < 0)
++    {
++        lg2::error("PowerOn: write 0x43=0 failed");
++        return rc;
++    }
++    std::this_thread::sleep_for(WRITE_DELAY);
++
++    rc = writeReg(REG_CTRL_2, 0x01);
++    if (rc < 0)
++    {
++        lg2::error("PowerOn: write 0x43=1 failed");
++        return rc;
++    }
++
++    lg2::info("CPLD PowerOn: done");
++    return 0;
++}
++
++/**
++ * Power Off sequence:
++ *   0x41 <- 0  →  delay 100ms
++ *   0x43 <- 0  →  delay 100ms
++ *   0x41 <- 1  →  wait 6s
++ */
++static int doPowerOffLocked()
++{
++    int rc;
++    lg2::info("CPLD PowerOff: start");
++
++    rc = writeReg(REG_CTRL_1, 0x00);
++    if (rc < 0)
++    {
++        lg2::error("PowerOff: write 0x41=0 failed");
++        return rc;
++    }
++    std::this_thread::sleep_for(WRITE_DELAY);
++
++    rc = writeReg(REG_CTRL_2, 0x00);
++    if (rc < 0)
++    {
++        lg2::error("PowerOff: write 0x43=0 failed");
++        return rc;
++    }
++    std::this_thread::sleep_for(WRITE_DELAY);
++
++    rc = writeReg(REG_CTRL_1, 0x01);
++    if (rc < 0)
++    {
++        lg2::error("PowerOff: write 0x41=1 failed");
++        return rc;
++    }
++
++    lg2::info("CPLD PowerOff: waiting {SEC}s for stabilization",
++              "SEC", POWER_OFF_WAIT.count());
++    std::this_thread::sleep_for(POWER_OFF_WAIT);
++
++    lg2::info("CPLD PowerOff: done");
++    return 0;
++}
++
++/**
++ * Hard Reset:
++ *   0x14 <- 1
++ */
++static int doHardResetLocked()
++{
++    lg2::info("CPLD HardReset: writing 0x14=1");
++    int rc = writeReg(REG_HARD_RESET, 0x01);
++    if (rc < 0)
++    {
++        lg2::error("HardReset: write 0x14=1 failed");
++    }
++    else
++    {
++        lg2::info("CPLD HardReset: done");
++    }
++    return rc;
++}
++
++// ===================== Public interfaces (with mutex) =====================
++
++static int doPowerOn()
++{
++    std::lock_guard<std::mutex> lock(cpldMutex);
++    return doPowerOnLocked();
++}
++
++static int doPowerOff()
++{
++    std::lock_guard<std::mutex> lock(cpldMutex);
++    return doPowerOffLocked();
++}
++
++static int doHardReset()
++{
++    std::lock_guard<std::mutex> lock(cpldMutex);
++    return doHardResetLocked();
++}
++
++/**
++ * Power Cycle:
++ *   PowerOff (includes 6s wait) → delay another 4s → PowerOn
++ */
++static int doPowerCycle()
++{
++    std::lock_guard<std::mutex> lock(cpldMutex);
++    lg2::info("CPLD PowerCycle: start");
++
++    int rc = doPowerOffLocked();
++    if (rc < 0)
++    {
++        lg2::error("PowerCycle: power off phase failed");
++        return rc;
++    }
++
++    lg2::info("CPLD PowerCycle: waiting {SEC}s before power on",
++              "SEC", POWER_CYCLE_WAIT.count());
++    std::this_thread::sleep_for(POWER_CYCLE_WAIT);
++
++    rc = doPowerOnLocked();
++    if (rc < 0)
++    {
++        lg2::error("PowerCycle: power on phase failed");
++        return rc;
++    }
++
++    lg2::info("CPLD PowerCycle: done");
++    return 0;
++}
++
++} // namespace cpld_i2c
++
+ int getHostNetworkData(ipmi::message::Payload& payload)
+ {
+     ipmi::PropertyMap properties;
+@@ -1022,53 +1270,35 @@ std::optional<uint2_t> getPowerRestorePolicy()
+ 
+ /*
+  * getPowerStatus
+- * helper function for Get Chassis Status Command
+- * return - optional value for pgood (no value on error)
++ * Reads power state from CPLD register 0x17 via I2C.
++ * Value 0x03 = power on (return true)
++ * Value 0x00 = power off (return false)
++ * Any other value = error (return nullopt)
+  */
+ std::optional<bool> getPowerStatus()
+ {
+-    bool powerGood = false;
+-    std::shared_ptr<sdbusplus::asio::connection> busp = getSdBus();
+-    try
++    uint8_t regVal = 0;
++    int rc = cpld_i2c::readReg(cpld_i2c::REG_POWER_STATUS, &regVal);
++    if (rc < 0)
+     {
+-        constexpr const char* chassisStatePath =
+-            "/xyz/openbmc_project/state/chassis0";
+-        auto service =
+-            ipmi::getService(*busp, ChassisState::interface, chassisStatePath);
+-
+-        ipmi::Value powerState = ipmi::getDbusProperty(
+-            *busp, service, chassisStatePath, ChassisState::interface,
+-            ChassisState::property_names::current_power_state);
+-        std::string powerStateStr = std::get<std::string>(powerState);
+-        if (powerStateStr.ends_with(".On") ||
+-            powerStateStr.ends_with(".TransitioningToOff"))
+-        {
+-            powerGood = true;
+-        }
++        lg2::error("getPowerStatus: CPLD I2C read failed, rc={RC}", "RC", rc);
++        return std::nullopt;
+     }
+-    catch (const std::exception& e)
++
++    switch (regVal)
+     {
+-        try
+-        {
+-            // FIXME: some legacy modules use the older path; try that next
+-            constexpr const char* legacyPwrCtrlObj =
+-                "/org/openbmc/control/power0";
+-            constexpr const char* legacyPwrCtrlIntf =
+-                "org.openbmc.control.Power";
+-            auto service =
+-                ipmi::getService(*busp, legacyPwrCtrlIntf, legacyPwrCtrlObj);
+-
+-            ipmi::Value variant = ipmi::getDbusProperty(
+-                *busp, service, legacyPwrCtrlObj, legacyPwrCtrlIntf, "pgood");
+-            powerGood = static_cast<bool>(std::get<int>(variant));
+-        }
+-        catch (const std::exception& e)
+-        {
+-            lg2::error("Failed to fetch pgood property: {ERROR}", "ERROR", e);
++        case 0x00:
++            lg2::debug("getPowerStatus: reg 0x17 = 0x00 -> power OFF");
++            return std::make_optional(false);
++        case 0x03:
++            lg2::debug("getPowerStatus: reg 0x17 = 0x03 -> power ON");
++            return std::make_optional(true);
++        default:
++            lg2::error("getPowerStatus: invalid register value 0x{VAL} "
++                       "(expected 0x00 or 0x03), reg=0x17",
++                       "VAL", lg2::hex, regVal);
+             return std::nullopt;
+-        }
+     }
+-    return std::make_optional(powerGood);
+ }
+ 
+ /*
+@@ -1441,7 +1671,12 @@ ipmi::RspType<uint4_t, // Restart Cause
+  *
+  *  @param - chassisControl command byte
+  *
+- *  @return  Success or InvalidFieldRequest.
++ *  cmdPowerOn       -> 0x41=0, 100ms, 0x43=0, 100ms, 0x43=1
++ *  cmdPowerOff      -> 0x41=0, 100ms, 0x43=0, 100ms, 0x41=1, wait 6s
++ *  cmdHardReset     -> 0x14=1
++ *  cmdPowerCycle    -> PowerOff + wait 10s + PowerOn
++ *  cmdSoftOff       -> same as PowerOff
++ *  cmdNMI           -> original D-Bus path
+  */
+ ipmi::RspType<> ipmiChassisControl(ipmi::Context::ptr& ctx,
+                                    uint8_t chassisControl)
+@@ -1450,58 +1685,68 @@ ipmi::RspType<> ipmiChassisControl(ipmi::Context::ptr& ctx,
+     switch (chassisControl)
+     {
+         case cmdPowerOn:
+-            rc = initiateHostStateTransition(ctx, State::Host::Transition::On);
++            lg2::info("ipmiChassisControl: Power On requested");
++            rc = cpld_i2c::doPowerOn();
+             break;
++
+         case cmdPowerOff:
+-            rc = initiateChassisStateTransition(
+-                ctx, State::Chassis::Transition::Off);
++            lg2::info("ipmiChassisControl: Power Off requested");
++            rc = cpld_i2c::doPowerOff();
+             break;
++
+         case cmdHardReset:
+-            rc = initiateHostStateTransition(
+-                ctx, State::Host::Transition::ForceWarmReboot);
++            lg2::info("ipmiChassisControl: Hard Reset requested");
++            rc = cpld_i2c::doHardReset();
+             break;
++
+         case cmdPowerCycle:
+         {
++            lg2::info("ipmiChassisControl: Power Cycle requested");
++            // IPMI spec: return 0xD5 if system is already off
+             auto powerState = power_policy::getPowerStatus();
+-
+-            if (powerState == std::nullopt)
++            if (!powerState.has_value())
+             {
++                lg2::error("PowerCycle: cannot determine power state");
+                 return ipmi::responseUnspecifiedError();
+             }
+-
+-            /*
+-             * As defined in the Chapter 28.3 - Chassis Control Command of IPMI
+-             * specification: It is recommended that no action occur if system
+-             * power is off (S4/S5) when this action is selected, and that a D5
+-             * "Request parameter(s) not supported in this present state."
+-             * error completion code be returned.
+-             */
+             if (powerState.value() == false)
+             {
++                lg2::warning("PowerCycle: system is already off, rejecting");
+                 return ipmi::responseCommandNotAvailable();
+             }
+-
+-            rc = initiateHostStateTransition(ctx,
+-                                             State::Host::Transition::Reboot);
++            rc = cpld_i2c::doPowerCycle();
+             break;
+         }
++
+         case cmdSoftOffViaOverTemp:
+-            rc = initiateHostStateTransition(ctx, State::Host::Transition::Off);
++            lg2::info("ipmiChassisControl: Soft Off requested");
++            rc = cpld_i2c::doPowerOff();
+             break;
++
+         case cmdPulseDiagnosticInterrupt:
++        {
++            // NMI still uses original D-Bus path
++            lg2::info("ipmiChassisControl: NMI requested (D-Bus)");
+             rc = doNmi(ctx);
+             break;
++        }
+ 
+         default:
+-        {
+-            lg2::error("Invalid Chassis Control command: {CMD}", "CMD",
+-                       lg2::hex, chassisControl);
++            lg2::error("ipmiChassisControl: invalid command 0x{CMD}",
++                       "CMD", lg2::hex, chassisControl);
+             return ipmi::responseInvalidFieldRequest();
+-        }
+     }
+ 
+-    return ((rc < 0) ? ipmi::responseUnspecifiedError()
+-                     : ipmi::responseSuccess());
++    if (rc < 0)
++    {
++        lg2::error("ipmiChassisControl: command 0x{CMD} FAILED, rc={RC}",
++                   "CMD", lg2::hex, chassisControl, "RC", rc);
++        return ipmi::responseUnspecifiedError();
++    }
++
++    lg2::info("ipmiChassisControl: command 0x{CMD} completed OK",
++              "CMD", lg2::hex, chassisControl);
++    return ipmi::responseSuccess();
+ }
+ 
+ /** @brief Return D-Bus connection string to enclosure identify LED object

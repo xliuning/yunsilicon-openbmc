@@ -1,0 +1,16 @@
+{
+    "Name": "Andes2",
+    "Probe": [
+        "xyz.openbmc_project.FruDevice({'BOARD_PRODUCT_NAME': 'SOC Board'})"
+    ],
+    "Type": "Board",
+    "Exposes": [
+        {
+            "Address": "$ADDRESS",
+            "Bus": "$BUS",
+            "FruId": 0,
+            "Name": "Andes2 Baseboard",
+            "Type": "FruDevice"
+        }
+    ]
+}

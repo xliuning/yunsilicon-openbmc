@@ -1,0 +1,54 @@
+From 6301e7e697a20eb12446066c986e0289c0d152db Mon Sep 17 00:00:00 2001
+From: xliuning <IDLN@163.com>
+Date: Wed, 19 Aug 2026 16:58:14 +0800
+Subject: [PATCH] - Uboot only stop when press Ctrl +C
+
+Signed-off-by: liun <liun@yunsilicon.com>"
+
+Upstream-Status: Inappropriate [board-specific]
+---
+ common/autoboot.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/common/autoboot.c b/common/autoboot.c
+index 94133eaeda..341ce80a33 100644
+--- a/common/autoboot.c
++++ b/common/autoboot.c
+@@ -218,7 +218,7 @@ static int __abortboot(int bootdelay)
+ #else
+ 	printf("Hit any key to stop autoboot: %2d ", bootdelay);
+ #endif
+-
++#if 0
+ 	/*
+ 	 * Check if key already pressed
+ 	 */
+@@ -227,14 +227,27 @@ static int __abortboot(int bootdelay)
+ 		puts("\b\b\b 0");
+ 		abort = 1;	/* don't auto boot	*/
+ 	}
+-
++#else
++	/*
++	 * Check if Ctrl + C already pressed
++	 */
++	if (ctrlc()) {	/* we got a key press	*/
++		(void) getc();  /* consume input	*/
++		puts("\b\b\b 0");
++		abort = 1;	/* don't auto boot	*/
++	}
++#endif
+ 	while ((bootdelay > 0) && (!abort)) {
+ 		--bootdelay;
+ 		/* delay 1000 ms */
+ 		ts = get_timer(0);
+ 		do {
++#if 0
+ 			if (tstc()) {	/* we got a key press	*/
++#else
++			if (ctrlc()) {	/* we got a ctrl + c key press	*/
+ 				abort  = 1;	/* don't auto boot	*/
++#endif
+ 				bootdelay = 0;	/* no more delay	*/
+ # ifdef CONFIG_MENUKEY
+ 				menukey = getc();
