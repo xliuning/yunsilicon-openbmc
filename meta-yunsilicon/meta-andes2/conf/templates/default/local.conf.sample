@@ -126,7 +126,7 @@ MACHINE = "andes2"
 # The following will allow root login without a password for convenience.
 # Use with care, and never in product builds.
 #EXTRA_IMAGE_FEATURES ?= "allow-empty-password empty-root-password allow-root-login"
-
+EXTRA_IMAGE_FEATURES = "allow-root-login"
 #
 # Additional image features
 #

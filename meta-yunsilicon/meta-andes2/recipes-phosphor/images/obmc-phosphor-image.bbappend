@@ -4,6 +4,8 @@ OBMC_IMAGE_EXTRA_INSTALL:append:andes2 = " \
     net-tools \
     switch-util \
     set-mac-from-fru \
+    mtd-utils \
+    mtd-utils-ubifs \
 "
 IMAGE_INSTALL:append = " \
     phosphor-hwmon \
