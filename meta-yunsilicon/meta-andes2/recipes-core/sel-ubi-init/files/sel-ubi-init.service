@@ -1,0 +1,12 @@
+[Unit]
+Description=Initialize SEL UBI volume
+Before=sel.mount
+After=local-fs-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/sel-ubi-init.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=local-fs-pre.target

@@ -4,7 +4,9 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 #PACKAGECONFIG:append = " journal-sel"
 #EXTRA_OEMESON:append = " -Djournal-sel=enabled"
 #  SDR and sensor support
-# 在 local.conf 或 phosphor-ipmi-host_%.bbappend 中
+# in local.conf or phosphor-ipmi-host_%.bbappend
 PACKAGECONFIG:append:pn-phosphor-ipmi-host = "   dynamic-storages-only "
 PACKAGECONFIG:append = " dynamic-sensors "
-SRC_URI += "file://0001-Add-yunsilicon-andes2-power-control.patch"
+SRC_URI += "file://0001-Add-yunsilicon-andes2-power-control.patch \
+            file://0002-Change-SEL-default-folder-val-log-ipmi_sel.patch \
+            "

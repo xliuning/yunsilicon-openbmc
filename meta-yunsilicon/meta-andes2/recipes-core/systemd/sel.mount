@@ -1,0 +1,14 @@
+[Unit]
+Description=Mount persistent SEL storage
+After=local-fs-pre.target
+Before=rsyslog.service
+DefaultDependencies=no
+
+[Mount]
+What=ubi0:sel
+Where=/var/log/ipmi_sel
+Type=ubifs
+Options=rw
+
+[Install]
+WantedBy=multi-user.target

@@ -1,9 +1,12 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-# 引入 flash_eraseall 工具所在的包
+# add flash_eraseall utils
 RDEPENDS:${PN} += "mtd-utils"
 
-# 覆盖主配方中的 obmc-init.sh 为我们 meta-andes2 下的自定义脚本
+# add ubifs tool for initramfs config
+RDEPENDS:${PN}:append = " mtd-utils-ubifs"
+
+# overwrite origin recipe obmc-init.sh
 SRC_URI:append = " \
     file://obmc-init.sh \
 "

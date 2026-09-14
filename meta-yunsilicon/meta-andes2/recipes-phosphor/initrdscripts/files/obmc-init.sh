@@ -12,13 +12,14 @@ mkdir -p $fslist
 mount dev dev -tdevtmpfs
 mount sys sys -tsysfs
 mount proc proc -tproc
+
 if ! grep run proc/mounts
 then
-	mount tmpfs run -t tmpfs -o mode=755,nodev
+        mount tmpfs run -t tmpfs -o mode=755,nodev
 fi
 
-mkdir -p $rodir $rwdir
 
+mkdir -p $rodir $rwdir
 cp -rp init shutdown update whitelist bin sbin usr lib etc var run/initramfs
 
 # To start a interactive shell with job control at this point, run
@@ -214,49 +215,53 @@ if [ -z "$ro_num" ] || [ -z "$rw_num" ]; then
 	cat /proc/mtd
 	debug_takeover "MTD Partition lookup failed."
 fi
+#retry three times, otherwise erase
+# =====================================================================
+# Pre-check RWFS integrity.
+# Only check filesystem by readonly mount.
+# Do not modify /etc or restore files here because this is still
+# running in initramfs stage.
+# =====================================================================
 
-# =====================================================================
-# Pre-check RWFS integrity. This step only probes the filesystem
-# read-only and erases it if corrupted; it does NOT perform the final
-# read-write mount. The final mount is handled once, later in the
-# script, by the existing logic (search for "$rwfst" != none section
-# near the end of this file). Doing a full rw mount/umount here caused
-# "Device or resource busy" on the later real mount and led to a
-# kernel panic (init exiting with an error).
-# =====================================================================
-if [ -b "$rwdev" ]; then
-	if ! mount -t jffs2 -o ro "$rwdev" "$rwdir" 2>/dev/null; then
-		echo "========================================================"
-		echo "WARNING: RWFS ($rwdev) appears corrupted or unformatted!"
-		echo "Executing flash_erase..."
-		echo "========================================================"
-		flash_erase "/dev/$rwfs" 0 0
-		rwfst=jffs2
-	else
-		umount "$rwdir"
-		# Give the mtd/jffs2 layer time to fully release the device
-		# before the real mount happens later in this script.
-		sync
-	fi
-fi
+rw_check_ok=0
 
-# =====================================================================
-# Pre-check SEL partition, if present. Same read-only-probe-then-erase
-# pattern as above; does not leave anything mounted afterwards.
-# =====================================================================
-sel_num=$(get_mtd_num "sel")
-if [ -n "$sel_num" ]; then
-	seldev="/dev/mtdblock${sel_num}"
-	seldir="/run/initramfs/sel"
-	mkdir -p "$seldir"
-	if ! mount -t jffs2 -o ro "$seldev" "$seldir" 2>/dev/null; then
-		echo "WARNING: SEL partition ($seldev) corrupted! Wiping..."
-		flash_erase "/dev/mtd${sel_num}" 0 0
-	else
-		umount "$seldir"
-		sync
-	fi
+for retry in 1 2 3
+do
+
+        if [ -b "$rwdev" ] && mount -t jffs2 -o ro "$rwdev" "$rwdir" 2>/dev/null
+	then
+		rw_check_ok=1
+
+                # release mtd/jffs2 before real rw mount later
+		umount "$rwdir" || true
+                break
+        fi
+
+
+        echo "rwfs mount retry $retry"
+
+        sleep 2
+
+done
+
+
+if [ "$rw_check_ok" != "1" ]
+then
+
+        echo "========================================================"
+        echo "WARNING: RWFS ($rwdev) appears corrupted"
+        echo "Erase rwfs filesystem"
+        echo "========================================================"
+
+
+        flash_erase "/dev/$rwfs" 0 0
+	sync
+        rwfst=jffs2
+
 fi
+# SEL is independent log storage.
+# Failure must never block boot.
+
 # =====================================================================
 
 # Set to y for yes, anything else for no.
@@ -270,7 +275,7 @@ consider_download_ftp=y
 rofst=squashfs
 rwfst=$(probe_fs_type "$rwdev")
 roopts=ro
-rwopts=rw
+rwopts=rw,noatime
 
 image=/run/initramfs/image-
 trigger=${image}rwfs
@@ -539,6 +544,215 @@ fi
 
 mount -t overlay -o lowerdir=$rodir,upperdir=$upper,workdir=$work cow /root
 
+#
+# Mount persistent SEL storage
+#
+#   mtd(sel)
+#       |
+#       v
+#     UBI
+#       |
+#       v
+#   ubiX:sel
+#       |
+#       v
+#     UBIFS
+#       |
+#       v
+# /root/var/log/ipmi_sel
+#
+# SEL storage is independent from rwfs.
+# Any SEL failure must NOT block normal boot.
+#
+
+mount_sel_storage()
+{
+        sel_num=$(get_mtd_num "sel")
+
+        if [ -z "$sel_num" ]; then
+                echo "SEL: no 'sel' MTD partition found"
+                return 0
+        fi
+
+        sel_dev="/dev/mtd${sel_num}"
+
+        echo "SEL: found MTD partition ${sel_dev}"
+
+
+        #
+        # Check MTD character device
+        #
+        if [ ! -c "$sel_dev" ]; then
+                echo "SEL: ${sel_dev} does not exist"
+                return 0
+        fi
+
+
+        #
+        # Check whether SEL MTD is already attached to UBI.
+        #
+        sel_ubi=""
+
+        for ubi_dir in /sys/class/ubi/ubi*
+        do
+                [ -d "$ubi_dir" ] || continue
+
+                mtd_num=$(cat "$ubi_dir/mtd_num" 2>/dev/null)
+
+                if [ "$mtd_num" = "$sel_num" ]; then
+                        sel_ubi=$(basename "$ubi_dir")
+                        break
+                fi
+        done
+
+
+        #
+        # Attach SEL MTD to UBI if not already attached.
+        #
+if [ -z "$sel_ubi" ]; then
+
+        echo "SEL: PATH=[$PATH]"
+        echo "SEL: root filesystem:"
+        ls -ld / /usr /usr/sbin 2>&1
+
+        echo "SEL: ubiattach:"
+        ls -l /usr/sbin/ubiattach 2>&1
+        ls -l /usr/sbin/ubiattach.mtd-utils 2>&1
+
+        echo "SEL: dynamic loader:"
+        ls -l /usr/lib/ld-linux-armhf.so.3 2>&1
+        ls -l /usr/lib/libc.so.6 2>&1
+
+        echo "SEL: command lookup:"
+        command -v ubiattach 2>&1 || true
+
+        echo "SEL: direct execution:"
+        /usr/sbin/ubiattach --help 2>&1 || true
+
+        echo "SEL: attaching ${sel_dev} to UBI"
+
+        if ! /usr/sbin/ubiattach -p "$sel_dev"; then
+                echo "SEL: WARNING: ubiattach failed"
+                echo "SEL: boot continues without persistent SEL"
+                return 0
+        fi
+
+
+                sleep 1
+
+                #
+                # Find the UBI device created by ubiattach.
+                #
+                for ubi_dir in /sys/class/ubi/ubi*
+                do
+                        [ -d "$ubi_dir" ] || continue
+
+                        mtd_num=$(cat "$ubi_dir/mtd_num" 2>/dev/null)
+
+                        if [ "$mtd_num" = "$sel_num" ]; then
+                                sel_ubi=$(basename "$ubi_dir")
+                                break
+                        fi
+                done
+        fi
+
+
+        if [ -z "$sel_ubi" ]; then
+                echo "SEL: WARNING: UBI device not found"
+                return 0
+        fi
+
+        echo "SEL: UBI device = ${sel_ubi}"
+
+
+        #
+        # Find UBI volume named "sel".
+        #
+        sel_volume=""
+
+        for vol_dir in /sys/class/ubi/${sel_ubi}_*
+        do
+                [ -d "$vol_dir" ] || continue
+
+                vol_name=$(cat "$vol_dir/name" 2>/dev/null)
+
+                if [ "$vol_name" = "sel" ]; then
+                        sel_volume=$(basename "$vol_dir")
+                        break
+                fi
+        done
+
+
+        #
+        # Create UBI volume if it does not exist.
+        #
+        if [ -z "$sel_volume" ]; then
+
+                echo "SEL: UBI volume 'sel' not found"
+                echo "SEL: creating volume 'sel'"
+
+                if ! ubimkvol "/dev/${sel_ubi}" -N sel -m; then
+                        echo "SEL: WARNING: failed to create UBI volume"
+                        echo "SEL: boot continues without persistent SEL"
+                        return 0
+                fi
+
+                sleep 1
+
+                for vol_dir in /sys/class/ubi/${sel_ubi}_*
+                do
+                        [ -d "$vol_dir" ] || continue
+
+                        vol_name=$(cat "$vol_dir/name" 2>/dev/null)
+
+                        if [ "$vol_name" = "sel" ]; then
+                                sel_volume=$(basename "$vol_dir")
+                                break
+                        fi
+                done
+        fi
+
+
+        if [ -z "$sel_volume" ]; then
+                echo "SEL: WARNING: UBI volume 'sel' not found"
+                return 0
+        fi
+
+        echo "SEL: UBI volume = ${sel_volume}"
+
+
+        #
+        # Mount UBIFS into the final root filesystem.
+        #
+        mkdir -p /root/var/log/ipmi_sel
+
+        if mount -t ubifs \
+                "${sel_ubi}:sel" \
+                /root/var/log/ipmi_sel \
+                -o rw,noatime
+        then
+                echo "SEL: UBIFS mounted successfully"
+                echo "SEL: /root/var/log/ipmi_sel -> ${sel_ubi}:sel"
+
+                #
+                # Test write access.
+                #
+                if touch /root/var/log/ipmi_sel/.sel_write_test
+                then
+                        rm -f /root/var/log/ipmi_sel/.sel_write_test
+                        echo "SEL: write test PASSED"
+                else
+                        echo "SEL: WARNING: write test FAILED"
+                fi
+        else
+                echo "SEL: WARNING: UBIFS mount failed"
+                echo "SEL: boot continues without persistent SEL"
+        fi
+
+        return 0
+}
+
+mount_sel_storage
 while ! chroot /root /bin/sh -c "test -x '$init' -a -s '$init'"
 do
 	msg="Unable to confirm /sbin/init is an executable non-empty file

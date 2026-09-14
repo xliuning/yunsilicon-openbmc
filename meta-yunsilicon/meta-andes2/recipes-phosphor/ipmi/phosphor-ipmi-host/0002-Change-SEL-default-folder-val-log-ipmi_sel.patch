@@ -1,0 +1,26 @@
+From 1d9e564a13d74fab5c2803d9349b35c2c4dc05d9 Mon Sep 17 00:00:00 2001
+From: xliuning <IDLN@163.com>
+Date: Fri, 11 Sep 2026 09:56:36 +0800
+Subject: [PATCH]  - Change SEL default fold /val/log/ipmi_sel  - Change SEL
+ default filename sel.log
+
+Upstream-Status: Inappropriate [board-specific]
+---
+ dbus-sdr/storagecommands.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/dbus-sdr/storagecommands.cpp b/dbus-sdr/storagecommands.cpp
+index 6de099c..1e22cca 100644
+--- a/dbus-sdr/storagecommands.cpp
++++ b/dbus-sdr/storagecommands.cpp
+@@ -44,8 +44,8 @@ static constexpr bool DEBUG = false;
+ 
+ namespace dynamic_sensors::ipmi::sel
+ {
+-static const std::filesystem::path selLogDir = "/var/log";
+-static const std::string selLogFilename = "ipmi_sel";
++static const std::filesystem::path selLogDir = "/var/log/ipmi_sel";
++static const std::string selLogFilename = "sel.log";
+ 
+ static int getFileTimestamp(const std::filesystem::path& file)
+ {

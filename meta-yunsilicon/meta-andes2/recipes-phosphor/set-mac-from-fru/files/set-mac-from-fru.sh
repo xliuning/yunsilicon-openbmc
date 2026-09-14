@@ -11,7 +11,7 @@ RETRY_INTERVAL=2
 
 echo "[MAC Config] Waiting for FruDevice object $OBJECT..."
 
-# 1. 等待 FruDevice 准备就绪
+# 1. wait FruDevice ready
 count=0
 MAC=""
 while [ $count -lt $MAX_RETRIES ]; do
@@ -34,7 +34,7 @@ if [ -z "$MAC" ]; then
     exit 1
 fi
 
-# 2. 获取当前网卡 MAC，判断是否需要更新
+# 2. get current nic MAC check if need update or not
 CURRENT_MAC=$(cat /sys/class/net/$IFACE/address 2>/dev/null | tr 'a-z' 'A-Z')
 TARGET_MAC=$(echo "$MAC" | tr 'a-z' 'A-Z')
 
@@ -43,13 +43,13 @@ if [ "$CURRENT_MAC" = "$TARGET_MAC" ]; then
     exit 0
 fi
 
-# 3. 设置网卡 MAC
+# 3. config MAC
 echo "[MAC Config] Changing MAC on $IFACE from $CURRENT_MAC to $TARGET_MAC..."
 ip link set dev "$IFACE" down
 ip link set dev "$IFACE" address "$TARGET_MAC"
 ip link set dev "$IFACE" up
 
-# 4. 通知/重启 phosphor-network-manager 确保 OpenBMC 认知一致
+# 4. notfiy /reset phosphor-network-manager ensure  OpenBMC get latest config
 systemctl restart phosphor-network-manager.service 2>/dev/null || true
 
 echo "[MAC Config] Successfully applied MAC: $TARGET_MAC"

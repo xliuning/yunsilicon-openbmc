@@ -10,8 +10,10 @@ OBMC_IMAGE_EXTRA_INSTALL:append:andes2 = " \
 IMAGE_INSTALL:append = " \
     phosphor-hwmon \
 "
-OBMC_IMAGE_EXTRA_INSTALL:append:andes2 = " phosphor-sel-logger"
+OBMC_IMAGE_EXTRA_INSTALL:append:andes2 = " \
+	phosphor-sel-logger \
+	sel-ubi-init"
 EXTRA_USERS_PARAMS:append = " \
     usermod -a -G priv-admin root; \
 "
-IMAGE_INSTALL:append = " phosphor-user-manager "
+IMAGE_INSTALL:append = " phosphor-user-manager  "

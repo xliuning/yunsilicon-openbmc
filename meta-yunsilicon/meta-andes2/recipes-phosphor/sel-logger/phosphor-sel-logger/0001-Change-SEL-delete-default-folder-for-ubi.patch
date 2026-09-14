@@ -1,0 +1,26 @@
+From 6f0b3df9bae96798377f3a44f3183b2c03ed7644 Mon Sep 17 00:00:00 2001
+From: xliuning <IDLN@163.com>
+Date: Fri, 11 Sep 2026 13:46:05 +0800
+Subject: [PATCH]  - Change SEL delete default folder  - Change SEL delete
+ default file
+
+Upstream-Status: Inappropriate [board-specific]
+---
+ include/sel_logger.hpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/sel_logger.hpp b/include/sel_logger.hpp
+index dd96f1a..552e19f 100644
+--- a/include/sel_logger.hpp
++++ b/include/sel_logger.hpp
+@@ -42,8 +42,8 @@ static constexpr size_t selEvtDataMaxSize = 3;
+ static constexpr size_t selOemDataMaxSize = 13;
+ static constexpr uint8_t selEvtDataUnspecified = 0xFF;
+ 
+-static const std::filesystem::path selLogDir = "/var/log";
+-static const std::string selLogFilename = "ipmi_sel";
++static const std::filesystem::path selLogDir = "/var/log/ipmi_sel";
++static const std::string selLogFilename = "sel.log";
+ #ifdef SEL_LOGGER_ENABLE_SEL_DELETE
+ static const std::string nextRecordFilename = "next_records";
+ uint16_t getNewRecordId();
