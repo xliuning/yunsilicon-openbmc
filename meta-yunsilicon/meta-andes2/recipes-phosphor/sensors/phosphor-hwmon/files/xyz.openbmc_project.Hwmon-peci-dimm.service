@@ -1,0 +1,13 @@
+[Unit]
+Description=Phosphor Hwmon PECI DIMM Temperature
+After=xyz.openbmc_project.ObjectMapper.service
+
+[Service]
+Type=simple
+Restart=on-failure
+EnvironmentFile=/etc/default/obmc/hwmon/peci-dimm.conf
+ExecStart=/usr/bin/phosphor-hwmon-readd -i PECI_DIMM -o /devices/platform/ahb/ahb:apb/1e78b000.peci-controller/peci-0/0-30/peci_cpu.dimmtemp.icxd.48
+SyslogIdentifier=phosphor-hwmon-peci-dimm
+
+[Install]
+WantedBy=multi-user.target
