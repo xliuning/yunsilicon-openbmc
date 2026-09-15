@@ -347,7 +347,9 @@
         snoop-ports = <0x80>;
         status = "okay";
 };
-
+&peci0 {
+        status = "okay";
+};
 
 /*
  * The signal voltage of sdhci0 and sdhci1 on AST2600-A2 EVB is able to be
