@@ -9,6 +9,7 @@ OBMC_IMAGE_EXTRA_INSTALL:append:andes2 = " \
 "
 IMAGE_INSTALL:append = " \
     phosphor-hwmon \
+    cpu-temp-aggregator \
 "
 OBMC_IMAGE_EXTRA_INSTALL:append:andes2 = " \
 	phosphor-sel-logger \
