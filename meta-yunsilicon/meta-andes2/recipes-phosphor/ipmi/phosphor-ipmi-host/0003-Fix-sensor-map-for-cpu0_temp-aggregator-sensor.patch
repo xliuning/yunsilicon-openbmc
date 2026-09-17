@@ -1,0 +1,132 @@
+From dffb231d3903e5a2337bee8b0965eb00d2888581 Mon Sep 17 00:00:00 2001
+From: xliuning <IDLN@163.com>
+Date: Wed, 16 Sep 2026 17:55:55 +0800
+Subject: [PATCH]  - Fix sensor map for cpu0_temp aggregator sensor
+
+Upstream-Status: Inappropriate [board-specific]
+---
+ apphandler.cpp | 106 +++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 76 insertions(+), 30 deletions(-)
+
+diff --git a/apphandler.cpp b/apphandler.cpp
+index 231f630..11695db 100644
+--- a/apphandler.cpp
++++ b/apphandler.cpp
+@@ -138,41 +138,87 @@ std::string getActiveSoftwareVersionInfo(ipmi::Context::ptr ctx)
+         }
+ 
+         auto minPriority = 0xFF;
+-        for (const auto& objIter : objValueTree)
++       for (const auto& objIter : objValueTree)
++{
++    const auto& path = objIter.first;
++    const auto& intfMap = objIter.second;
++
++    /*
++     * /xyz/openbmc_project/software can contain objects which are
++     * not Software.Version objects.
++     *
++     * For example:
++     *   /xyz/openbmc_project/software/bmc
++     *
++     * Such objects do not provide RedundancyPriority, Version and
++     * Activation interfaces. Do not use map::at() directly.
++     */
++    auto redundancyIt = intfMap.find(redundancyIntf);
++    auto versionIt = intfMap.find(versionIntf);
++    auto activationIt = intfMap.find(activationIntf);
++
++    if (redundancyIt == intfMap.end() ||
++        versionIt == intfMap.end() ||
++        activationIt == intfMap.end())
++    {
++        lg2::debug(
++            "Skipping software object without required interfaces: "
++            "path={PATH}",
++            "PATH", path);
++        continue;
++    }
++
++    const auto& redundancyPriorityProps = redundancyIt->second;
++    const auto& versionProps = versionIt->second;
++    const auto& activationProps = activationIt->second;
++
++    auto priorityIt = redundancyPriorityProps.find("Priority");
++    auto purposeIt = versionProps.find("Purpose");
++    auto activationPropIt = activationProps.find("Activation");
++    auto versionPropIt = versionProps.find("Version");
++
++    if (priorityIt == redundancyPriorityProps.end() ||
++        purposeIt == versionProps.end() ||
++        activationPropIt == activationProps.end() ||
++        versionPropIt == versionProps.end())
++    {
++        lg2::debug(
++            "Skipping incomplete software object: path={PATH}",
++            "PATH", path);
++        continue;
++    }
++
++    try
++    {
++        auto priority = std::get<uint8_t>(priorityIt->second);
++        auto purpose = std::get<std::string>(purposeIt->second);
++        auto activation =
++            std::get<std::string>(activationPropIt->second);
++        auto version =
++            std::get<std::string>(versionPropIt->second);
++
++        if ((Version::convertVersionPurposeFromString(purpose) ==
++             Version::VersionPurpose::BMC) &&
++            (Activation::convertActivationsFromString(activation) ==
++             Activation::Activations::Active))
+         {
+-            try
++            if (priority < minPriority)
+             {
+-                auto& intfMap = objIter.second;
+-                auto& redundancyPriorityProps = intfMap.at(redundancyIntf);
+-                auto& versionProps = intfMap.at(versionIntf);
+-                auto& activationProps = intfMap.at(activationIntf);
+-                auto priority =
+-                    std::get<uint8_t>(redundancyPriorityProps.at("Priority"));
+-                auto purpose =
+-                    std::get<std::string>(versionProps.at("Purpose"));
+-                auto activation =
+-                    std::get<std::string>(activationProps.at("Activation"));
+-                auto version =
+-                    std::get<std::string>(versionProps.at("Version"));
+-                if ((Version::convertVersionPurposeFromString(purpose) ==
+-                     Version::VersionPurpose::BMC) &&
+-                    (Activation::convertActivationsFromString(activation) ==
+-                     Activation::Activations::Active))
+-                {
+-                    if (priority < minPriority)
+-                    {
+-                        minPriority = priority;
+-                        objectFound = true;
+-                        revision = std::move(version);
+-                    }
+-                }
+-            }
+-            catch (const std::exception& e)
+-            {
+-                lg2::error("error message: {ERROR}", "ERROR", e);
++                minPriority = priority;
++                objectFound = true;
++                revision = std::move(version);
+             }
+         }
+     }
++    catch (const std::exception& e)
++    {
++        lg2::error(
++            "Failed to parse software object: path={PATH}, error={ERROR}",
++            "PATH", path,
++            "ERROR", e);
++    }
++}
++    }
+ 
+     if (!objectFound)
+     {

@@ -1,0 +1,14 @@
+[Unit]
+Description=CPU Temperature Aggregator
+After=xyz.openbmc_project.Hwmon.slice
+After=xyz.openbmc_project.ObjectMapper.service
+Wants=xyz.openbmc_project.ObjectMapper.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/cpu-temp-aggregator
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
