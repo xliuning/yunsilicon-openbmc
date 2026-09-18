@@ -1,0 +1,130 @@
+From edf53a9f9b1d707f96912b9b8a88ea8af11eb7bf Mon Sep 17 00:00:00 2001
+From: xliuning <IDLN@163.com>
+Date: Fri, 18 Sep 2026 15:47:27 +0800
+Subject: [PATCH]  - Hide PECI sensors CPU_coreX sensors  - Only Keep
+ CPU0_TEMP/DIMM_A1/DIMM_B1 aggregator sensor
+
+Upstream-Status: Inappropriate [board-specific]
+---
+ dbus-sdr/sdrutils.cpp         | 49 ++++++++++++++++++++++++++++++-----
+ dbus-sdr/sensorcommands.cpp   | 17 ++++++++++--
+ include/dbus-sdr/sdrutils.hpp |  2 ++
+ 3 files changed, 60 insertions(+), 8 deletions(-)
+
+diff --git a/dbus-sdr/sdrutils.cpp b/dbus-sdr/sdrutils.cpp
+index 3134b7a..41381e8 100644
+--- a/dbus-sdr/sdrutils.cpp
++++ b/dbus-sdr/sdrutils.cpp
+@@ -27,6 +27,7 @@
+ #include <fstream>
+ #include <optional>
+ #include <unordered_set>
++#include <vector>
+ 
+ using ObjectMapper = sdbusplus::common::xyz::openbmc_project::ObjectMapper;
+ using SensorValue = sdbusplus::common::xyz::openbmc_project::sensor::Value;
+@@ -82,6 +83,35 @@ boost::container::flat_map<
+          {"utilization", std::make_pair(SensorTypeCodes::other,
+                                         SensorEventTypeCodes::threshold)}}};
+ 
++bool isHiddenCpuTemperatureSensor(
++    const std::string& path)
++{
++    static const std::vector<std::string> hiddenSensors =
++    {
++        "CPU_Core0",
++        "CPU_Core1",
++        "CPU_Core2",
++        "CPU_Core4",
++        "CPU_Core5",
++        "CPU_Core6",
++        "CPU_Core8",
++        "CPU_Core9",
++
++        "CPU_Tcontrol",
++        "CPU_Tjmax",
++        "CPU_Tthrottle"
++    };
++
++    for (const auto& sensor : hiddenSensors)
++    {
++        if (path.find(sensor) != std::string::npos)
++        {
++            return true;
++        }
++    }
++
++    return false;
++}
+ namespace details
+ {
+ 
+@@ -252,13 +282,20 @@ bool getSensorNumMap(std::shared_ptr<SensorNumMap>& sensorNumMap)
+ 
+     sensorNumMapPtr = std::make_shared<SensorNumMap>();
+ 
+-    uint16_t sensorNum = 0;
+-    uint16_t sensorIndex = 0;
+-    for (const auto& sensor : *sensorTree)
++uint16_t sensorNum = 0;
++uint16_t sensorIndex = 0;
++
++for (const auto& sensor : *sensorTree)
++{
++    if (isHiddenCpuTemperatureSensor(sensor.first))
+     {
+-        sensorNumMapPtr->insert(
+-            SensorNumMap::value_type(sensorNum, sensor.first));
+-        sensorIndex++;
++        continue;
++    }
++
++    sensorNumMapPtr->insert(
++        SensorNumMap::value_type(sensorNum, sensor.first));
++
++    sensorIndex++;
+         if (sensorIndex == maxSensorsPerLUN)
+         {
+             sensorIndex = lun1Sensor0;
+diff --git a/dbus-sdr/sensorcommands.cpp b/dbus-sdr/sensorcommands.cpp
+index e48025b..b895988 100644
+--- a/dbus-sdr/sensorcommands.cpp
++++ b/dbus-sdr/sensorcommands.cpp
+@@ -2132,9 +2132,22 @@ bool constructVrSdr(ipmi::Context::ptr ctx,
+ 
+ uint16_t getNumberOfSensors()
+ {
+-    return std::min(getSensorTree().size(), maxIPMISensors);
+-}
++    const auto& sensorTree = getSensorTree();
++
++    size_t count = 0;
+ 
++    for (const auto& sensor : sensorTree)
++    {
++        if (isHiddenCpuTemperatureSensor(sensor.first))
++        {
++            continue;
++        }
++
++        count++;
++    }
++
++    return std::min(count, maxIPMISensors);
++}
+ static int getSensorDataRecord(
+     ipmi::Context::ptr ctx,
+     const std::unordered_set<std::string>& ipmiDecoratorPaths,
+diff --git a/include/dbus-sdr/sdrutils.hpp b/include/dbus-sdr/sdrutils.hpp
+index 23d7119..ed891d1 100644
+--- a/include/dbus-sdr/sdrutils.hpp
++++ b/include/dbus-sdr/sdrutils.hpp
+@@ -336,6 +336,8 @@ uint8_t getSensorTypeFromPath(const std::string& path);
+ 
+ uint16_t getSensorNumberFromPath(const std::string& path);
+ 
++bool isHiddenCpuTemperatureSensor(const std::string& path);
++
+ uint8_t getSensorEventTypeFromPath(const std::string& path);
+ 
+ std::string getPathFromSensorNumber(uint16_t sensorNum);
