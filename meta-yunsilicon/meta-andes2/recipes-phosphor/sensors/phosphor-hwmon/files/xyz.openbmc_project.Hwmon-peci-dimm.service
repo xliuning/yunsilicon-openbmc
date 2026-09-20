@@ -6,7 +6,7 @@ After=xyz.openbmc_project.ObjectMapper.service
 Type=simple
 Restart=on-failure
 EnvironmentFile=/etc/default/obmc/hwmon/peci-dimm.conf
-ExecStart=/usr/bin/phosphor-hwmon-readd -i PECI_DIMM -o /devices/platform/ahb/ahb:apb/1e78b000.peci-controller/peci-0/0-30/peci_cpu.dimmtemp.icxd.48
+ExecStart=/usr/bin/phosphor-hwmon-readd -i PECI_DIMM -p /sys/class/hwmon/hwmon1
 SyslogIdentifier=phosphor-hwmon-peci-dimm
 
 [Install]
