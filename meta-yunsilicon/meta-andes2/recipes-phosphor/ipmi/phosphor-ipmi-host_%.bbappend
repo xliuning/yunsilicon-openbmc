@@ -7,6 +7,9 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 # in local.conf or phosphor-ipmi-host_%.bbappend
 PACKAGECONFIG:append:pn-phosphor-ipmi-host = "   dynamic-storages-only "
 PACKAGECONFIG:append = " dynamic-sensors "
+#PACKAGECONFIG:remove = "transport-null"
+
+#PACKAGECONFIG:append = " transport-serial"
 SRC_URI += "file://0001-Add-yunsilicon-andes2-power-control.patch \
             file://0002-Change-SEL-default-folder-val-log-ipmi_sel.patch \
             file://0003-Fix-sensor-map-for-cpu0_temp-aggregator-sensor.patch \

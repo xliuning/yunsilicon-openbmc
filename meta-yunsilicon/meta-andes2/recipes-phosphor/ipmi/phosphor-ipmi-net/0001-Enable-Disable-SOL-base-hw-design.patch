@@ -1,0 +1,58 @@
+From b0b7f1b9bb89363b7ecabb374f954ce27efe2093 Mon Sep 17 00:00:00 2001
+From: xliuning <IDLN@163.com>
+Date: Tue, 22 Sep 2026 16:50:16 +0800
+Subject: [PATCH]  - Enable SOL  - Fix SOL deactivate not restore serial
+ settings
+
+Upstream-Status: Inappropriate [board-specific]
+---
+ sol/sol_manager.cpp | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+diff --git a/sol/sol_manager.cpp b/sol/sol_manager.cpp
+index fa4d794..0a1165c 100644
+--- a/sol/sol_manager.cpp
++++ b/sol/sol_manager.cpp
+@@ -89,6 +89,20 @@ void Manager::startHostConsole()
+ {
+     if (!consoleSocket)
+     {
++        try
++	{
++        sdbusplus::bus_t bus(ipmid_get_sd_bus_connection());
++            auto method = bus.new_method_call(
++                "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
++                "org.freedesktop.systemd1.Manager", "StartUnit");
++            method.append("obmc-console@ttyS2.service", "replace");
++            bus.call(method);
++        }
++        catch (const std::exception& e)
++        {
++            lg2::error("Failed to start obmc-console service: {ERROR}",
++                       "ERROR", e);
++        }
+         initConsoleSocket();
+     }
+ 
+@@ -115,6 +129,21 @@ void Manager::stopHostConsole()
+         consoleSocket->cancel();
+         consoleSocket.reset();
+     }
++
++    try
++    {
++        sdbusplus::bus_t bus(ipmid_get_sd_bus_connection());
++        auto method = bus.new_method_call(
++            "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
++            "org.freedesktop.systemd1.Manager", "StopUnit");
++        method.append("obmc-console@ttyS2.service", "replace");
++        bus.call(method);
++    }
++    catch (const std::exception& e)
++    {
++        lg2::error("Failed to stop obmc-console service: {ERROR}", "ERROR",
++                   e);
++    }
+ }
+ 
+ void Manager::updateSOLParameter(uint8_t channelNum)

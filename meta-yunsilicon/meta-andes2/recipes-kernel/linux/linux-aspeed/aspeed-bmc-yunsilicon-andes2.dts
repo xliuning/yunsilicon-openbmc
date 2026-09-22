@@ -343,11 +343,21 @@
         status = "okay";
 };
 
+&uart_routing {
+        status = "okay";
+};
+
 &lpc_snoop {
         snoop-ports = <0x80>;
         status = "okay";
 };
 &peci0 {
+        status = "okay";
+};
+&uart1 {
+        status = "okay";
+};
+&uart3 {
         status = "okay";
 };
 

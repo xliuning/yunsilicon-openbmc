@@ -11,7 +11,6 @@ RPROVIDES:packagegroup-yunsilicon-apps += "\
         virtual-obmc-flash-mgmt \
         virtual-obmc-system-mgmt \
         "
-
 RDEPENDS:${PN} = "\
         phosphor-state-manager \
         phosphor-fan-presence-config \
@@ -23,4 +22,5 @@ RDEPENDS:${PN} = "\
         phosphor-ipmi-host \
         bmcweb \
         dbus-sensors \
+        phosphor-settings-manager \
         "
